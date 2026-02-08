@@ -1,7 +1,7 @@
 {
-    "eye_contact_percentage": 74.3,
-    "confidence_score": 74,
-    "total_time_seconds": 133.09,
-    "total_frames": 3685,
-    "eye_contact_frames": 2738
+    "eye_contact_percentage": 40.59,
+    "confidence_score": 40,
+    "total_time_seconds": 23.04,
+    "total_frames": 611,
+    "eye_contact_frames": 248
 }
