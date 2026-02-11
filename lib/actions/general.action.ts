@@ -1,6 +1,6 @@
 "use server";
 
-import { generateObject, generateText } from "ai";
+import { generateObject } from "ai";
 import { google } from "@ai-sdk/google";
 
 import { db } from "@/firebase/admin";
@@ -17,8 +17,8 @@ export async function createFeedback(params: CreateFeedbackParams) {
       )
       .join("");
 
-    const { object } = await generateText({
-      model: google("gemini-2.0-flash", {
+    const { object } = await generateObject({
+      model: google("gemini-2.0-flash",{
         structuredOutputs: false,
       }),
       schema: feedbackSchema,
