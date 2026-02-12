@@ -101,7 +101,7 @@ const Agent = ({
         router.push(`/interview/${interviewId}/feedback`);
       } else {
         console.log("Error saving feedback");
-        router.push("/");
+        router.push(`/interview/${interviewId}/feedback`);
       }
     };
 

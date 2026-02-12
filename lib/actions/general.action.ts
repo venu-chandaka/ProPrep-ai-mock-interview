@@ -1,10 +1,12 @@
 "use server";
 
-import { generateObject } from "ai";
 import { google } from "@ai-sdk/google";
 
 import { db } from "@/firebase/admin";
 import { feedbackSchema } from "@/constants";
+
+import { generateText } from "ai";
+
 
 export async function createFeedback(params: CreateFeedbackParams) {
   const { interviewId, userId, transcript, feedbackId } = params;
@@ -17,30 +19,64 @@ export async function createFeedback(params: CreateFeedbackParams) {
       )
       .join("");
 
-    const { object } = await generateObject({
-      model: google("gemini-2.0-flash",{
-        structuredOutputs: false,
-      }),
-      schema: feedbackSchema,
+    // 🔥 Generate feedback using Gemini (TEXT mode)
+    const { text } = await generateText({
+      model: google("gemini-2.0-flash",),
       prompt: `
-        You are an AI interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories. Be thorough and detailed in your analysis. Don't be lenient with the candidate. If there are mistakes or areas for improvement, point them out.
-        Transcript:
-        ${formattedTranscript}
+Return ONLY valid JSON.
+Do NOT use markdown.
+Do NOT wrap in backticks.
+Do NOT add explanation.
 
-        Please score the candidate from 0 to 100 in the following areas. Do not add categories other than the ones provided:
-        - **Communication Skills**: Clarity, articulation, structured responses.
-        - **Technical Knowledge**: Understanding of key concepts for the role.
-        - **Problem-Solving**: Ability to analyze problems and propose solutions.
-        - **Cultural & Role Fit**: Alignment with company values and job role.
-        - **Confidence & Clarity**: Confidence in responses, engagement, and clarity.
-        `,
-      system:
-        "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories",
+Return format exactly like this:
+
+{
+  "totalScore": number,
+  "categoryScores": {
+    "communication": number,
+    "technical": number,
+    "problemSolving": number,
+    "culturalFit": number,
+    "confidence": number
+  },
+  "strengths": ["string"],
+  "areasForImprovement": ["string"],
+  "finalAssessment": "string"
+}
+
+You are an AI interviewer analyzing a mock interview.
+Be strict and detailed.
+Do not be lenient.
+
+Transcript:
+${formattedTranscript}
+`,
     });
 
+    // 🔥 Safe JSON parser
+    function safeParse(text: string) {
+      try {
+        const cleaned = text
+          .replace(/```json/gi, "")
+          .replace(/```/g, "")
+          .trim();
+
+        return JSON.parse(cleaned);
+      } catch (err) {
+        console.error("AI JSON Parse Failed:", text);
+        return null;
+      }
+    }
+
+    const object = safeParse(text);
+
+    if (!object) {
+      throw new Error("AI returned invalid JSON");
+    }
+
     const feedback = {
-      interviewId: interviewId,
-      userId: userId,
+      interviewId,
+      userId,
       totalScore: object.totalScore,
       categoryScores: object.categoryScores,
       strengths: object.strengths,
@@ -65,6 +101,7 @@ export async function createFeedback(params: CreateFeedbackParams) {
     return { success: false };
   }
 }
+
 
 export async function getInterviewById(id: string): Promise<Interview | null> {
   const interview = await db.collection("interviews").doc(id).get();
